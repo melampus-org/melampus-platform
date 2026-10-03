@@ -1,0 +1,51 @@
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: [VERSION, CHANGELOG.md]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: "0.12.17"
+          python-version: "3.11"
+      - name: Validate and build before tagging
+        run: make ci
+      - name: Tag and publish validated GitHub artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          ver="$(tr -d '[:space:]' < VERSION)"
+          [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid VERSION'; exit 1; }
+          tag="v$ver"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "$tag already released"
+              exit 0
+            fi
+            test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA" || { echo 'Existing tag does not identify this build'; exit 1; }
+          else
+            uv run --locked python release/_lib/version_check.py --strict
+            git tag -a "$tag" -m "$tag"
+            git push origin "$tag"
+          fi
+          uv run --locked python release/_lib/release_notes.py "$ver" > notes.md
+          gh release create "$tag" --verify-tag --prerelease --title "$tag (alpha)" --notes-file notes.md dist/*
