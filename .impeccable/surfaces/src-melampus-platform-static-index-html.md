@@ -36,3 +36,14 @@ Code-led build. Existing site/ is a separate marketing surface and stays intact.
 Signature interaction: selecting a waterfall span reveals its contract evidence.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+
+## System Mesh extension (v0.2.0)
+Task: see the whole codebase's declared intent, contracts and dependencies alongside observed calls.
+Inherit the existing Operate world and dense Datadog-style navigation and evidence labels.
+FIRST VIEWPORT: codebase, evidence time and environment controls; compact coverage facts;
+a grouped code boundary map next to a readable intent/check inspector, with full function inventory below.
+Signature interaction: select a boundary to read its exact catalog text and matching runtime check evidence.
+Distinguish dashed declared dependencies from solid observed calls. Unobserved declarations remain visible;
+missing catalogs remain hash-only, and mismatched declarations never explain unrelated execution.
+Build path: code-led extension of the incumbent application. No new visual identity or raster assets.

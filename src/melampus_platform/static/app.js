@@ -36,7 +36,7 @@ if (![15, 60, 1440, 10080].includes(state.minutes)) state.minutes = 60;
 if (!(state.outcome in labels) || !["", "drift", "error", "incomplete", "aligned", "unverified"].includes(state.outcome)) state.outcome = "";
 if (!["", "application", "platform", "demo"].includes(state.origin)) state.origin = "";
 if (!["failures", "recent", "duration"].includes(state.sort)) state.sort = "failures";
-if (!["explorer", "functions", "setup"].includes(state.view)) state.view = "explorer";
+if (!["explorer", "functions", "mesh", "setup"].includes(state.view)) state.view = "explorer";
 let data = null, statusData = null, requestController = null, traceController = null;
 let toastTimer, searchTimer, busyDemo = false, returningFocus = null, returningTraceId = null;
 const services = new Set(), environments = new Set();
@@ -261,16 +261,18 @@ function renderStatus() {
 
 function showView(view) {
   state.view = view;
-  for (const v of ["explorer", "functions", "setup"]) $(v === "explorer" ? "exploreView" : `${v}View`).hidden = v !== view;
+  for (const v of ["explorer", "functions", "mesh", "setup"]) $(v === "explorer" ? "exploreView" : `${v}View`).hidden = v !== view;
   document.querySelectorAll("[data-view]").forEach(button => {
     button.classList.toggle("active", button.dataset.view === view);
     if (button.dataset.view === view) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
   });
-  $("pageTitle").textContent = {explorer:"Trace Explorer", functions:"Functions", setup:"Connect SDK"}[view];
-  $("pageDescription").textContent = {explorer:"From a failed intent check to the code that ran.", functions:"Intent and check evidence, across your codebase.", setup:"Send execution evidence to your local workspace."}[view];
+  $("pageTitle").textContent = {explorer:"Trace Explorer", functions:"Functions", mesh:"System Mesh", setup:"Connect SDK"}[view];
+  $("pageDescription").textContent = {explorer:"From a failed intent check to the code that ran.", functions:"Intent and check evidence, across your codebase.", mesh:"Declared intent and contracts, connected to the code that runs.", setup:"Send execution evidence to your local workspace."}[view];
   $("connectButton").hidden = view === "setup";
+  document.querySelector(".privacy-note").textContent = view === "mesh" ? "Opt-in catalog text" : "Hashed declarations";
   document.title = `${$("pageTitle").textContent} · Melampus`;
   writeURL();
+  if (view === "mesh" && typeof refreshMesh === "function") refreshMesh();
 }
 
 async function openTrace(id, trigger) {
@@ -477,4 +479,4 @@ $("copySnippet").addEventListener("click", () => copyText(snippet));
 const initialTrace = params.get("trace");
 showView(state.view);
 refresh().then(() => { if (initialTrace) openTrace(initialTrace); });
-setInterval(() => { if (state.live && !document.hidden && !busyDemo && state.view !== "setup") refresh(); }, 5000);
+setInterval(() => { if (state.live && !document.hidden && !busyDemo && state.view !== "setup") state.view === "mesh" ? refreshMesh() : refresh(); }, 5000);

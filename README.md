@@ -16,13 +16,14 @@ Open **http://127.0.0.1:4318**. Send OTLP/HTTP protobuf or JSON to
 **http://127.0.0.1:4318/v1/traces**. The platform pins the published Melampus Python
 SDK v0.2.0 GitHub wheel; no unpublished local SDK changes are required.
 
+- Whole-codebase intent/contract mesh with opt-in declaration text and observed call evidence.
 - Failure-first explorer, service/environment/source filters, live refresh and search.
 - Proportional trace waterfalls with per-function check outcomes and declaration hashes.
 - SQLite persistence, seven-day retention and bounded admission with retry deduplication.
 - Actual Melampus SDK instrumentation of platform ingestion and queries.
 - Synthetic checkout example with evaluated failures, errors and suppressed checks.
 
-[Setup, APIs and evidence semantics](docs/PLATFORM.md) · [Release process](docs/RELEASE.md)
+[Whole-codebase mesh and catalog integration](docs/MESH.md) · [Setup, APIs and evidence semantics](docs/PLATFORM.md) · [Release process](docs/RELEASE.md)
 
 ## Development
 

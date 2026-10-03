@@ -67,6 +67,10 @@ class Store:
             CREATE INDEX IF NOT EXISTS spans_start ON spans(start_ns);
             CREATE INDEX IF NOT EXISTS spans_service ON spans(service, start_ns);
             CREATE INDEX IF NOT EXISTS spans_outcome ON spans(outcome, start_ns);
+            CREATE TABLE IF NOT EXISTS catalogs (
+                codebase TEXT PRIMARY KEY, revision TEXT NOT NULL,
+                imported_ns INTEGER NOT NULL, document TEXT NOT NULL
+            );
             """
         )
         with self.lock, self.db:
@@ -278,6 +282,75 @@ class Store:
             "stored_spans": count,
             "max_spans": self.max_spans,
             "retention_days": self.retention_days,
+        }
+
+    def import_catalog(self, document: dict[str, Any]) -> dict[str, Any]:
+        from .catalog import MAX_CATALOGS, Catalog
+
+        catalog = Catalog.model_validate(document)
+        with self.lock, self.db:
+            existing = self.db.execute(
+                "SELECT 1 FROM catalogs WHERE codebase=?", (catalog.codebase,)
+            ).fetchone()
+            if (
+                not existing
+                and self.db.execute("SELECT COUNT(*) FROM catalogs").fetchone()[0] >= MAX_CATALOGS
+            ):
+                raise OverflowError("catalog capacity reached (16 codebases)")
+            self.db.execute(
+                "INSERT INTO catalogs VALUES (?,?,?,?) ON CONFLICT(codebase) DO UPDATE SET "
+                "revision=excluded.revision, imported_ns=excluded.imported_ns, document=excluded.document",
+                (catalog.codebase, catalog.revision, time.time_ns(), catalog.model_dump_json()),
+            )
+        return {
+            "codebase": catalog.codebase,
+            "revision": catalog.revision,
+            "functions": len(catalog.functions),
+        }
+
+    def mesh(
+        self, *, codebase: str = "", since_ns: int, until_ns: int, environment: str = ""
+    ) -> dict[str, Any]:
+        from .mesh import build
+
+        with self.lock, self.db:
+            self._prune()
+            catalogs = [
+                dict(zip(("codebase", "revision", "imported_ns"), row, strict=True))
+                for row in self.db.execute(
+                    "SELECT codebase,revision,imported_ns FROM catalogs ORDER BY codebase"
+                )
+            ]
+            selected = codebase or (catalogs[0]["codebase"] if catalogs else "")
+            row = self.db.execute(
+                "SELECT document FROM catalogs WHERE codebase=?", (selected,)
+            ).fetchone()
+            if codebase and row is None:
+                raise LookupError("codebase catalog was not found")
+            document = json.loads(row[0]) if row else None
+            clauses = ["start_ns >= ?", "start_ns <= ?"]
+            arguments: list[Any] = [since_ns, until_ns]
+            if environment:
+                clauses.append("environment=?")
+                arguments.append(environment)
+            if document:
+                services = sorted({f["service"] for f in document["functions"]})
+                clauses.append("service IN (" + ",".join("?" for _ in services) + ")")
+                arguments.extend(services)
+            rows = self.db.execute(
+                "SELECT data FROM spans WHERE "
+                + " AND ".join(clauses)
+                + " ORDER BY start_ns DESC,span_id",
+                arguments,
+            ).fetchall()
+        return {
+            **build(document, [json.loads(row[0]) for row in rows]),
+            "catalogs": catalogs,
+            "codebase": selected,
+            "revision": document["revision"] if document else None,
+            "since_ns": since_ns,
+            "until_ns": until_ns,
+            "environment": environment,
         }
 
     def close(self) -> None:

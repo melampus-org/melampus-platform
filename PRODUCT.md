@@ -42,3 +42,9 @@ workflow. The identity and terminology belong to Melampus.
 ## Open decisions
 Authentication, multi tenancy, distributed storage, and hosted deployment remain
 future product decisions.
+
+## System Mesh extension
+The user requested a whole-codebase mesh view for the next version. Include declared
+boundaries without execution, readable catalog intent and contracts, dependency context,
+and observed execution evidence. Catalog text is explicit opt-in and never reconstructed
+from OTLP hashes. Missing evidence and mismatched declarations remain distinguishable.

@@ -5,17 +5,16 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from melampus import Check, Policy, instrumented
+from melampus import Check, Contract, Policy, instrumented
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.trace import Tracer
 
+from .catalog import from_contracts
 
-def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
-    tracer: Tracer = provider.get_tracer("melampus.demo", "0.1.0")
-
-    @instrumented(
-        intent="Calculate a nonnegative price and apply a discount of at most twenty percent.",
-        checks=(
+DEMO_CONTRACTS = {
+    "checkout.pricing:calculate_total": Contract(
+        "Calculate a nonnegative price and apply a discount of at most twenty percent.",
+        (
             Check("nonnegative-total", lambda r: r >= 0, "The checkout total is nonnegative."),
             Check(
                 "discount-ceiling",
@@ -23,6 +22,64 @@ def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
                 "The checkout total is at least eighty for a one hundred dollar basket.",
             ),
         ),
+    ),
+    "checkout.inventory:reserve_stock": Contract(
+        "Reserve a positive quantity of inventory.",
+        (Check("stock-reserved", lambda r: r > 0, "At least one unit is reserved."),),
+    ),
+    "checkout.payments:authorize": Contract(
+        "Return a valid payment authorization.",
+        (Check("payment-authorized", lambda r: r is True, "Payment is authorized."),),
+    ),
+    "checkout.shipping:calculate_shipping": Contract(
+        "Calculate shipping cost within its configured check budget.",
+        (Check("shipping-nonnegative", lambda r: r >= 0, "Shipping is nonnegative."),),
+    ),
+    "checkout.orders:submit_order": Contract(
+        "Complete checkout with a valid order identifier.",
+        (
+            Check(
+                "order-created",
+                lambda r: r.startswith("order-"),
+                "Order identifiers have the order prefix.",
+            ),
+        ),
+    ),
+    "checkout.reconciliation:reconcile_settlement": Contract(
+        "Reconcile authorized payments with recorded orders.",
+        (
+            Check(
+                "settlement-balanced",
+                lambda r: r is True,
+                "Every authorized payment has a matching order.",
+            ),
+        ),
+    ),
+}
+
+
+def demo_catalog() -> dict[str, Any]:
+    parent = "checkout.orders:submit_order"
+    return from_contracts(
+        codebase="checkout-demo",
+        revision="synthetic-v1",
+        service="checkout-service",
+        contracts=DEMO_CONTRACTS,
+        dependencies=[(parent, path) for path in DEMO_CONTRACTS if path != parent],
+    )
+
+
+def reconcile_settlement(authorized: int, orders: int) -> bool:
+    """Declared demo boundary intentionally unexercised by the checkout scenario."""
+    return authorized == orders
+
+
+def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
+    tracer: Tracer = provider.get_tracer("melampus.demo", "0.1.0")
+
+    @instrumented(
+        intent=DEMO_CONTRACTS["checkout.pricing:calculate_total"].intent,
+        checks=DEMO_CONTRACTS["checkout.pricing:calculate_total"].checks,
         tracer=tracer,
         generator="synthetic-demo",
         path="checkout.pricing:calculate_total",
@@ -32,8 +89,8 @@ def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
         return 100 * (1 - discount)
 
     @instrumented(
-        intent="Reserve a positive quantity of inventory.",
-        checks=(Check("stock-reserved", lambda r: r > 0, "At least one unit is reserved."),),
+        intent=DEMO_CONTRACTS["checkout.inventory:reserve_stock"].intent,
+        checks=DEMO_CONTRACTS["checkout.inventory:reserve_stock"].checks,
         tracer=tracer,
         generator="synthetic-demo",
         path="checkout.inventory:reserve_stock",
@@ -43,8 +100,8 @@ def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
         return quantity
 
     @instrumented(
-        intent="Return a valid payment authorization.",
-        checks=(Check("payment-authorized", lambda r: r is True, "Payment is authorized."),),
+        intent=DEMO_CONTRACTS["checkout.payments:authorize"].intent,
+        checks=DEMO_CONTRACTS["checkout.payments:authorize"].checks,
         tracer=tracer,
         generator="synthetic-demo",
         path="checkout.payments:authorize",
@@ -56,8 +113,8 @@ def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
         return True
 
     @instrumented(
-        intent="Calculate shipping cost within its configured check budget.",
-        checks=(Check("shipping-nonnegative", lambda r: r >= 0, "Shipping is nonnegative."),),
+        intent=DEMO_CONTRACTS["checkout.shipping:calculate_shipping"].intent,
+        checks=DEMO_CONTRACTS["checkout.shipping:calculate_shipping"].checks,
         policy=Policy(checks_per_second=0),
         tracer=tracer,
         generator="synthetic-demo",
@@ -67,14 +124,8 @@ def generate(provider: TracerProvider, count: int = 24) -> dict[str, Any]:
         return 5
 
     @instrumented(
-        intent="Complete checkout with a valid order identifier.",
-        checks=(
-            Check(
-                "order-created",
-                lambda r: r.startswith("order-"),
-                "Order identifiers have the order prefix.",
-            ),
-        ),
+        intent=DEMO_CONTRACTS["checkout.orders:submit_order"].intent,
+        checks=DEMO_CONTRACTS["checkout.orders:submit_order"].checks,
         tracer=tracer,
         generator="synthetic-demo",
         path="checkout.orders:submit_order",
