@@ -20,6 +20,7 @@ def main() -> None:
     parser.add_argument("--max-spans", type=int, default=250_000)
     parser.add_argument("--retention-days", type=int, default=7)
     parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--catalog", type=Path, help="load an opt-in JSON declaration catalog")
     args = parser.parse_args()
     if not 1 <= args.port <= 65535 or min(args.max_spans, args.retention_days) < 1:
         parser.error("port must be 1–65535; capacity and retention must be positive")
@@ -29,6 +30,7 @@ def main() -> None:
             demo=args.demo,
             max_spans=args.max_spans,
             retention_days=args.retention_days,
+            catalog_path=args.catalog,
         ),
         host=args.host,
         port=args.port,

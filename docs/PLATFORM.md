@@ -108,6 +108,9 @@ uv run --locked python examples/send_traces.py \
   suppressed evidence, and distinct intent hashes across the filtered traces.
 - **Platform itself** selects the platform's own ingestion and query evidence.
   The **Attributes** tab identifies the function, generator, schema, and hashes.
+- **System Mesh** maps declared functions, intents, and contracts alongside
+  observed calls. Import an explicit catalog to include functions that have not
+  run; see [System Mesh](MESH.md) for export and evidence matching.
 
 The explorer distinguishes these outcomes:
 
@@ -128,9 +131,9 @@ checks actually observed, not unexercised code paths or absent spans.
 
 ## Architecture and language choice
 
-Python was chosen over TypeScript because Melampus's existing contracts,
-registration API, validators, and OTel instrumentation are Python. The platform
-can dogfood the SDK directly without inventing a TypeScript SDK or a Python sidecar.
+Python was chosen over TypeScript to reuse this workspace's published SDK,
+contract registration API, validators, and OTel instrumentation directly. The
+platform instruments its own ingestion and queries with the same SDK it receives.
 FastAPI handles HTTP; SQLite handles local persistence. The browser uses HTML,
 CSS, and small JavaScript modules without Node or a frontend build requirement.
 The standalone package depends on the published SDK release.
@@ -180,9 +183,10 @@ attempting to trace failed exports.
 - The receiver persists span IDs, names, timing, Melampus declarations/checks,
   and selected resource metadata. It discards unrelated span attributes, events,
   links, and exception messages. Function names and hashes remain visible
-  identifiers; hashes are not anonymization. Intent prose and predicate source
-  remain in the codebase, so the interface presents hashes rather than inventing
-  readable contract text.
+  identifiers; hashes are not anonymization. Ordinary OTLP declarations remain
+  hash-only. System Mesh stores readable intent and contract text only through
+  explicitly imported catalogs; it never derives that text from runtime hashes
+  or imports predicate source.
 - The synthetic demo uses actual execution times and actual predicate results.
   Its volume chart initially clusters traffic into the time of the run.
 
@@ -195,6 +199,8 @@ attempting to trace failed exports.
 | `GET /api/traces/{trace_id}` | Complete stored trace and its checks |
 | `GET /api/status` | Capacity, retention, schema, and self telemetry drop counts |
 | `POST /api/demo` | Generate labeled synthetic SDK traces (rate limited) |
+| `POST /api/catalog` | Validate and persist an explicit declaration catalog |
+| `GET /api/mesh` | Declared boundaries, matching check evidence, and dependency graph |
 | `GET /healthz` | Receiver readiness |
 | `GET /openapi.json` | Machine readable API schema |
 

@@ -11,3 +11,13 @@ def telemetry():
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     yield provider.get_tracer("test"), exporter
     provider.shutdown()
+
+
+@pytest.fixture
+def client(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from melampus_platform.app import create_app
+
+    with TestClient(create_app(tmp_path / "platform.sqlite3")) as instance:
+        yield instance

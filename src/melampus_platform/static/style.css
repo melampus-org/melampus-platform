@@ -330,3 +330,64 @@ pre { background: #f7f6fa; border-radius: 0 0 5px 5px; padding: 17px; margin: 0;
   .error-banner { margin-left: 18px; margin-right: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Whole-codebase mesh inherits the explorer's controls and evidence vocabulary. */
+.mesh-view { padding: 0 28px 24px; }
+.mesh-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.mesh-toolbar label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 11px; }
+.mesh-toolbar select, .mesh-toolbar input { height: 34px; border: 1px solid #d8d5e2; border-radius: 5px; background: var(--paper); padding: 6px 9px; color: var(--ink); min-width: 130px; }
+.mesh-toolbar .mesh-search { flex: 1; min-width: 180px; }
+.mesh-toolbar .button { height: 34px; }
+.mesh-provenance { color: var(--muted); font-size: 11px; margin: 15px 0; overflow-wrap: anywhere; }
+.mesh-summary { display: flex; flex-wrap: wrap; gap: 12px 26px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 13px 0; margin-bottom: 20px; font-size: 12px; color: var(--muted); }
+.mesh-summary strong { color: var(--ink); margin-left: 7px; font-variant-numeric: tabular-nums; }
+.mesh-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+.mesh-map { min-width: 0; border: 1px solid var(--line); border-radius: 6px; }
+.mesh-map-header { display: flex; justify-content: space-between; align-items: center; padding: 13px 15px 8px; }
+.mesh-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 15px 12px; color: var(--muted); font-size: 11px; }
+.mesh-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.observed-line, .declared-line { width: 19px; border-top: 2px solid var(--violet); }
+.declared-line { border-top: 2px dashed var(--muted); }
+.mesh-scroll { overflow: auto; max-height: 580px; min-height: 300px; background: var(--subtle); }
+.mesh-canvas { position: relative; }
+.mesh-edges { position: absolute; inset: 0; stroke-width: 1.5; width: 100%; height: 100%; }
+.mesh-edges .mesh-observed-edge { stroke: var(--violet); }
+.mesh-edges .mesh-declared-edge { stroke: var(--muted); stroke-dasharray: 5 4; }
+.mesh-module { position: absolute; font-size: 11px; font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mesh-node { position: absolute; width: 218px; min-height: 74px; border: 1px solid #d8d5e2; border-radius: 5px; background: var(--paper); padding: 10px 11px; text-align: left; }
+.mesh-node:hover { background: var(--violet-soft); }
+.mesh-node.selected { background: var(--violet-soft); border-color: var(--violet); }
+.mesh-node.not-observed { border-style: dashed; }
+.mesh-node strong { font-family: var(--mono); font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.mesh-node-evidence { display: flex; align-items: center; gap: 5px; font-size: 11px; margin-top: 5px; }
+.mesh-node-evidence > span:last-child { margin-left: auto; color: var(--muted); }
+.mesh-node small, .mesh-mismatch { font-size: 11px; color: var(--muted); display: block; margin-top: 3px; }
+.mesh-mismatch { color: var(--red); }
+.outcome-dot.unobserved { background: var(--muted); }
+.badge.unobserved { color: var(--muted); background: var(--subtle); }
+.mesh-limit { font-size: 11px; color: var(--muted); padding: 0 15px; }
+.mesh-inspector { min-width: 0; border-top: 2px solid var(--violet); padding: 15px 0; }
+.mesh-inspector-heading h2 { font-size: 17px; overflow-wrap: anywhere; }
+.mesh-inspector-heading code { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.mesh-inspector-heading > p { margin: 5px 0 10px; color: var(--muted); font-size: 12px; }
+.mesh-inspector h3 { margin: 22px 0 8px; }
+.mesh-evidence-line { margin: 15px 0; font-size: 11px; color: var(--muted); }
+.mesh-intent-text, .mesh-contract p { font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; margin: 7px 0; }
+.mesh-warning { font-size: 12px; padding: 10px 12px; background: var(--amber-soft); color: var(--amber); border: 1px solid var(--line); border-radius: 5px; }
+.mesh-contract { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.mesh-contract > strong { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.mesh-contract .mesh-check-evidence { font-size: 11px; color: var(--muted); }
+.mesh-connections { list-style: none; padding: 0; margin: 0; }
+.mesh-connections li { margin: 10px 0; }
+.mesh-connections button { display: block; max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+.mesh-connections span { font-size: 11px; color: var(--muted); }
+.mesh-trace-link { display: flex; align-items: center; justify-content: space-between; color: var(--violet); font-size: 11px; padding: 8px 0; }
+.mesh-inventory { margin-top: 28px; }
+.mesh-inventory td { vertical-align: top; }
+.mesh-intent-cell { max-width: 380px; min-width: 180px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
+.mesh-help { margin-top: 22px; border-top: 1px solid var(--line); padding: 15px 0; }
+.mesh-help summary { cursor: pointer; font-weight: 600; }
+.mesh-help p { max-width: 75ch; color: var(--muted); font-size: 12px; }
+@media (max-width: 1100px) { .mesh-workspace { grid-template-columns: 1fr; } .mesh-inspector { max-width: 75ch; } }
+@media (max-width: 800px) { .mesh-view { padding: 0 18px 20px; } .mesh-toolbar label { flex: 1; min-width: 120px; } .mesh-toolbar .mesh-search { flex-basis: 100%; } .mesh-scroll { max-height: 420px; } .mesh-inventory th:nth-child(2), .mesh-inventory td:nth-child(2) { display: none; } }
+@media (max-width: 520px) { .mesh-toolbar .button { width: 100%; } .mesh-summary { gap: 10px 16px; } .mesh-inventory th:nth-child(4), .mesh-inventory td:nth-child(4) { display: none; } }

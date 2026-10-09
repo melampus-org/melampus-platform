@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gzip
 import io
+import json
 import re
 import threading
 import time
@@ -18,10 +19,11 @@ from fastapi.staticfiles import StaticFiles
 from google.protobuf.json_format import ParseError
 from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceResponse
+from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from . import __version__
-from .demo import generate
+from .demo import demo_catalog, generate
 from .protocol import MAX_BODY
 from .store import OUTCOME_RANK, Store
 from .telemetry import Runtime, provider_for
@@ -35,6 +37,7 @@ def create_app(
     demo: bool = False,
     max_spans: int = 250_000,
     retention_days: int = 7,
+    catalog_path: Path | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -50,7 +53,13 @@ def create_app(
         app.state.demo_lock = threading.Lock()
         app.state.last_demo = 0.0
         try:
+            store.import_catalog(runtime.catalog())
+            if catalog_path is not None:
+                if catalog_path.stat().st_size > MAX_BODY:
+                    raise ValueError("Catalog exceeds 1 MiB")
+                store.import_catalog(json.loads(catalog_path.read_text()))
             if demo:
+                store.import_catalog(demo_catalog())
                 await run_in_threadpool(generate, demo_provider)
             yield
         finally:
@@ -95,7 +104,50 @@ def create_app(
             "telemetry_dropped": runtime.exporter.dropped,
             "demo_telemetry_dropped": app.state.demo_exporter.dropped,
             "schema_version": "0.1.0",
+            "platform_version": __version__,
         }
+
+    @app.post("/api/catalog")
+    async def import_catalog(request: Request) -> dict[str, Any]:
+        origin = request.headers.get("origin")
+        if origin and origin != str(request.base_url).rstrip("/"):
+            raise HTTPException(403, "Catalog imports must be requested from this platform")
+        if request.headers.get("content-type", "").split(";")[0].strip() != "application/json":
+            raise HTTPException(415, "Upload a JSON declaration catalog")
+        payload = bytearray()
+        async for chunk in request.stream():
+            payload.extend(chunk)
+            if len(payload) > MAX_BODY:
+                raise HTTPException(413, "Catalog exceeds 1 MiB")
+        try:
+            document = json.loads(payload)
+            runtime: Runtime = app.state.runtime
+            return await run_in_threadpool(runtime.store.import_catalog, document)
+        except (ValueError, TypeError, ValidationError) as exc:
+            raise HTTPException(
+                422,
+                "Invalid declaration catalog; check schema, unique identities and dependency endpoints",
+            ) from exc
+        except OverflowError as exc:
+            raise HTTPException(503, str(exc)) from exc
+
+    @app.get("/api/mesh")
+    def mesh(
+        codebase: Annotated[str, Query(max_length=64)] = "",
+        environment: Annotated[str, Query(max_length=256)] = "",
+        minutes: Annotated[int, Query(ge=1, le=10_080)] = 60,
+    ) -> dict[str, Any]:
+        end = time.time_ns()
+        runtime: Runtime = app.state.runtime
+        try:
+            return runtime.store.mesh(
+                codebase=codebase,
+                since_ns=end - minutes * 60 * 1_000_000_000,
+                until_ns=end,
+                environment=environment,
+            )
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
 
     @app.post("/v1/traces")
     async def receive(request: Request) -> Response:
@@ -212,6 +264,8 @@ def create_app(
             if time.monotonic() - app.state.last_demo < 3:
                 raise HTTPException(429, "Wait three seconds before generating another demo")
             app.state.last_demo = time.monotonic()
+            runtime: Runtime = app.state.runtime
+            runtime.store.import_catalog(demo_catalog())
             result = generate(app.state.demo_provider)
             if app.state.demo_exporter.dropped:
                 raise HTTPException(

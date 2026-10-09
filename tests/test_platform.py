@@ -5,12 +5,10 @@ import json
 import time
 
 import pytest
-from fastapi.testclient import TestClient
 from google.protobuf.json_format import MessageToDict
 from melampus import Check, Policy, instrumented
 from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 
-from melampus_platform.app import create_app
 from melampus_platform.protocol import MAX_BODY, parse
 from melampus_platform.store import Store
 
@@ -47,12 +45,6 @@ def sdk_request(telemetry, *, result=-1, policy=None, explode=False):
             for span in scope.spans:
                 span.attributes.add(key="secret.argument").value.string_value = "never-store"
     return request
-
-
-@pytest.fixture
-def client(tmp_path):
-    with TestClient(create_app(tmp_path / "platform.sqlite3")) as client:
-        yield client
 
 
 def post(client, request):
@@ -264,8 +256,8 @@ def test_platform_self_traces_are_real_sdk_checks_and_do_not_recurse(client):
     data = runtime.exporter.sink.__self__.explore(
         since_ns=time.time_ns() - 60 * 1_000_000_000, until_ns=time.time_ns(), origin="platform"
     )
-    assert data["total"] == 4
-    assert data["summary"]["evaluated_checks"] == 12
+    assert data["total"] == 5
+    assert data["summary"]["evaluated_checks"] == 13
     assert data["summary"]["pass_rate"] == 1
     assert all(t["service"] == "melampus-platform" for t in data["traces"])
     assert runtime.exporter.dropped == 0

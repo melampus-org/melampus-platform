@@ -6,7 +6,9 @@ import zipfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-wheels = list((root / "dist").glob("*.whl"))
+wheels = list(
+    (root / "dist").glob("melampus_platform-" + (root / "VERSION").read_text().strip() + "-*.whl")
+)
 assert len(wheels) == 1
 with zipfile.ZipFile(wheels[0]) as archive:
     for path in (
@@ -14,6 +16,7 @@ with zipfile.ZipFile(wheels[0]) as archive:
         "static/app.js",
         "static/style.css",
         "static/favicon.svg",
+        "static/mesh.js",
         "py.typed",
     ):
         assert "melampus_platform/" + path in archive.namelist(), path
